@@ -1,0 +1,131 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../../providers/app_providers.dart';
+import '../../auth/models/user_model.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../models/project_model.dart';
+
+part 'project_provider.g.dart';
+
+// Main projects stream provider that depends on current user
+@riverpod
+Stream<List<ProjectModel>> projectsStream(Ref ref) {
+  final currentUser = ref.watch(currentUserProvider);
+  
+  if (currentUser == null) {
+    return Stream.value([]);
+  }
+  
+  final projectService = ref.read(projectServiceProvider);
+  return projectService.streamUserProjects(currentUser.id);
+}
+
+// Project actions notifier (for create/delete operations)
+@riverpod
+class ProjectsNotifier extends _$ProjectsNotifier {
+  @override
+  String build() {
+    return 'ready'; // Simple state tracker
+  }
+
+  Future<String> createProject({
+    required String appName,
+    required List<String> platforms,
+    required List<String> deviceIds,
+    required List<String> supportedLanguages,
+  }) async {
+    // Get current user directly from Firebase Auth service instead of stream
+    final authService = ref.read(authServiceProvider);
+    final firebaseUser = authService.currentUser;
+    
+    if (firebaseUser == null) {
+      throw Exception('User not authenticated');
+    }
+    
+    // Create AppUser from Firebase user
+    final currentUser = AppUser(
+      id: firebaseUser.uid,
+      email: firebaseUser.email ?? '',
+      displayName: firebaseUser.displayName,
+      createdAt: DateTime.now(),
+      exportCount: 0,
+    );
+    
+    try {
+      final projectService = ref.read(projectServiceProvider);
+      final id = const Uuid().v4();
+      final now = DateTime.now();
+      
+      final project = ProjectModel(
+        id: id,
+        userId: currentUser.id,
+        appName: appName,
+        platforms: platforms,
+        deviceIds: deviceIds,
+        supportedLanguages: supportedLanguages,
+        screenshots: {}, // Initialize with empty screenshots
+        createdAt: now,
+        updatedAt: now,
+      );
+      
+      await projectService.createProject(project);
+      
+      // Invalidate the projects stream to refresh the list
+      ref.invalidate(projectsStreamProvider);
+      
+      return id; // Return the project ID for navigation
+    } catch (error) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteProject(String id) async {
+    try {
+      final projectService = ref.read(projectServiceProvider);
+      await projectService.deleteProject(id);
+      // Invalidate the projects stream to refresh the list
+      ref.invalidate(projectsStreamProvider);
+    } catch (error) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateProjectSettings({
+    required String projectId,
+    required String appName,
+    required List<String> platforms,
+    required List<String> deviceIds,
+    required List<String> supportedLanguages,
+    required ProjectModel currentProject,
+  }) async {
+    try {
+      final projectService = ref.read(projectServiceProvider);
+
+      await projectService.updateProjectSettings(
+        currentProject: currentProject,
+        appName: appName,
+        platforms: platforms,
+        deviceIds: deviceIds,
+        supportedLanguages: supportedLanguages,
+      );
+
+      // Invalidate the projects stream to refresh the list
+      ref.invalidate(projectsStreamProvider);
+    } catch (error) {
+      rethrow;
+    }
+  }
+
+  Future<void> toggleProjectLock(String projectId, bool isLocked) async {
+    try {
+      final projectService = ref.read(projectServiceProvider);
+      await projectService.toggleProjectLock(projectId, isLocked);
+      // Invalidate the projects stream to refresh the list
+      ref.invalidate(projectsStreamProvider);
+    } catch (error) {
+      rethrow;
+    }
+  }
+}

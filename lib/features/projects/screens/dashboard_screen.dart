@@ -1,0 +1,159 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+// TODO: Remove the temporary "Test Editor" button once the editor is fully integrated
+
+import '../../../core/widgets/loading_widget.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../providers/project_provider.dart';
+import '../widgets/project_card.dart';
+
+class DashboardScreen extends ConsumerWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUser = ref.watch(currentUserProvider);
+    final projectsState = ref.watch(projectsStreamProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Dashboard - ${currentUser?.email ?? ''}'),
+        actions: [
+          IconButton(
+            onPressed: () async {
+              await ref.read(authNotifierProvider.notifier).signOut();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sign out',
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/projects/create'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create New Project'),
+                ),
+                const SizedBox(width: 12),
+                // Temporary button to test the editor screen
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Navigate directly to the editor screen
+                    context.go('/projects/test/editor');
+                  },
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Test Editor'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: projectsState.when(
+                data: (projects) {
+                  if (projects.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No projects yet. Create your first project!',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    );
+                  }
+                  return GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.6,
+                    ),
+                    itemCount: projects.length,
+                    itemBuilder: (context, index) {
+                      final project = projects[index];
+                      return ProjectCard(
+                        project: project,
+                        onToggleLock: (isLocked) async {
+                          try {
+                            await ref
+                                .read(projectsNotifierProvider.notifier)
+                                .toggleProjectLock(project.id, isLocked);
+                          } catch (error) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(
+                                        'Error toggling lock: $error')),
+                              );
+                            }
+                          }
+                        },
+                        onDelete: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Delete Project'),
+                              content: Text(
+                                'Are you sure you want to delete "${project.appName}"?\n\nThis action cannot be undone.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirmed == true) {
+                            try {
+                              await ref
+                                  .read(projectsNotifierProvider.notifier)
+                                  .deleteProject(project.id);
+                            } catch (error) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content:
+                                          Text('Error deleting project: $error')),
+                                );
+                              }
+                            }
+                          }
+                        },
+                      );
+                    },
+                  );
+                },
+                loading: () => const LoadingWidget(),
+                error: (error, stack) => Center(
+                  child: Text('Error: $error'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
