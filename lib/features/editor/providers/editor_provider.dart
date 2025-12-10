@@ -1,22 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'dart:async';
-
+import '../../../providers/app_providers.dart';
 import '../../projects/models/project_model.dart';
 import '../../projects/models/project_screen_config.dart';
 import '../../projects/providers/project_provider.dart';
 import '../../projects/services/project_service.dart';
-import '../../../providers/app_providers.dart';
 import '../../shared/data/devices_data.dart';
 import '../../shared/models/screenshot_model.dart';
 import '../constants/layouts_data.dart';
 import '../constants/platform_dimensions.dart';
 import '../models/background_models.dart';
 import '../models/editor_state.dart';
-import '../models/text_models.dart';
-import '../models/layout_models.dart';
 import '../models/positioning_models.dart';
+import '../models/text_models.dart';
 import '../services/layout_application_service.dart';
 import '../services/platform_detection_service.dart';
 import '../utils/background_renderer.dart';
@@ -27,8 +26,7 @@ class EditorNotifier extends StateNotifier<EditorState> {
 
   final Ref? ref;
 
-  ProjectService? get _projectService =>
-      ref == null ? null : ref!.read(projectServiceProvider);
+  ProjectService? get _projectService => ref?.read(projectServiceProvider);
 
   // Debounce per-screen persistence to avoid flooding Firestore during typing
   final Map<String, Timer> _persistTimers = {};
@@ -211,7 +209,6 @@ class EditorNotifier extends StateNotifier<EditorState> {
     state = state.copyWith(selectedLanguage: language);
   }
 
-
   /// Applies a completed translation to the corresponding text element
   void applyTranslation({
     required String elementId,
@@ -224,16 +221,19 @@ class EditorNotifier extends StateNotifier<EditorState> {
     print('[EditorNotifier] Translated text: "$translatedText"');
 
     // Find the screen and element that matches this elementId
-    for (int screenIndex = 0; screenIndex < state.screens.length; screenIndex++) {
+    for (int screenIndex = 0;
+        screenIndex < state.screens.length;
+        screenIndex++) {
       final screen = state.screens[screenIndex];
-      
+
       // Check if this screen has the element
       final titleElement = screen.textConfig.getElement(TextFieldType.title);
-      final subtitleElement = screen.textConfig.getElement(TextFieldType.subtitle);
-      
+      final subtitleElement =
+          screen.textConfig.getElement(TextFieldType.subtitle);
+
       TextElement? targetElement;
       TextFieldType? targetType;
-      
+
       if (titleElement?.id == elementId) {
         targetElement = titleElement;
         targetType = TextFieldType.title;
@@ -241,39 +241,44 @@ class EditorNotifier extends StateNotifier<EditorState> {
         targetElement = subtitleElement;
         targetType = TextFieldType.subtitle;
       }
-      
+
       if (targetElement != null && targetType != null) {
         print('[EditorNotifier] Found element in screen $screenIndex');
         print('[EditorNotifier] Element type: ${targetType.displayName}');
-        print('[EditorNotifier] Current translations: ${targetElement.translations}');
-        
+        print(
+            '[EditorNotifier] Current translations: ${targetElement.translations}');
+
         // Update the element with the new translation
-        final updatedElement = targetElement.addTranslation(language, translatedText);
-        print('[EditorNotifier] Updated translations: ${updatedElement.translations}');
-        
+        final updatedElement =
+            targetElement.addTranslation(language, translatedText);
+        print(
+            '[EditorNotifier] Updated translations: ${updatedElement.translations}');
+
         // Update the text config
-        final updatedTextConfig = screen.textConfig.updateElement(updatedElement);
-        
+        final updatedTextConfig =
+            screen.textConfig.updateElement(updatedElement);
+
         // Update the screen
         final updatedScreen = screen.copyWith(textConfig: updatedTextConfig);
-        
+
         // Update the screens list
         final updatedScreens = List<ScreenConfig>.from(state.screens);
         updatedScreens[screenIndex] = updatedScreen;
-        
+
         // Update the state
         state = state.copyWith(screens: updatedScreens);
-        
+
         print('[EditorNotifier] Translation applied successfully');
-        
+
         // Persist the changes
         _persistScreen(screenIndex);
-        
+
         return;
       }
     }
-    
-    print('[EditorNotifier] WARNING: Element $elementId not found in any screen');
+
+    print(
+        '[EditorNotifier] WARNING: Element $elementId not found in any screen');
   }
 
   void updateSelectedDevice(String device) {
@@ -658,9 +663,11 @@ class EditorNotifier extends StateNotifier<EditorState> {
           final end = background.gradient!.end as Alignment;
           if (begin == Alignment.topCenter && end == Alignment.bottomCenter) {
             gradientDir = 'vertical';
-          } else if (begin == Alignment.centerLeft && end == Alignment.centerRight) {
+          } else if (begin == Alignment.centerLeft &&
+              end == Alignment.centerRight) {
             gradientDir = 'horizontal';
-          } else if (begin == Alignment.topLeft && end == Alignment.bottomRight) {
+          } else if (begin == Alignment.topLeft &&
+              end == Alignment.bottomRight) {
             gradientDir = 'diagonal';
           } else {
             gradientDir = 'vertical'; // default
@@ -703,13 +710,17 @@ class EditorNotifier extends StateNotifier<EditorState> {
   }
 
   // Transform overrides management (per-screen AND per-device, persisted via customSettings)
-  void updateDeviceTransformOverrideForCurrentScreen(ElementTransform transform) {
-    print('[EditorNotifier] updateDeviceTransformOverrideForCurrentScreen called');
-    print('[EditorNotifier] Device Transform: scale=${transform.scale}, rotation=${transform.rotationDeg}');
+  void updateDeviceTransformOverrideForCurrentScreen(
+      ElementTransform transform) {
+    print(
+        '[EditorNotifier] updateDeviceTransformOverrideForCurrentScreen called');
+    print(
+        '[EditorNotifier] Device Transform: scale=${transform.scale}, rotation=${transform.rotationDeg}');
 
     if (state.selectedScreenIndex == null ||
         state.selectedScreenIndex! >= state.screens.length) {
-      print('[EditorNotifier] No valid screen selected for device transform, returning');
+      print(
+          '[EditorNotifier] No valid screen selected for device transform, returning');
       return;
     }
 
@@ -743,7 +754,8 @@ class EditorNotifier extends StateNotifier<EditorState> {
       print('[EditorNotifier] Set as default deviceTransform (first device)');
     }
 
-    print('[EditorNotifier] Stored device-specific transform for device: $currentDeviceId');
+    print(
+        '[EditorNotifier] Stored device-specific transform for device: $currentDeviceId');
     final updatedScreen = screen.copyWith(customSettings: updatedSettings);
     updateScreenConfig(idx, updatedScreen);
   }
@@ -766,17 +778,22 @@ class EditorNotifier extends StateNotifier<EditorState> {
     // 3. Layout's deviceTransform (base default)
 
     // Check for device-specific transform first
-    if (currentDeviceId.isNotEmpty && settings.containsKey('deviceTransformsByDevice')) {
+    if (currentDeviceId.isNotEmpty &&
+        settings.containsKey('deviceTransformsByDevice')) {
       final deviceTransforms = settings['deviceTransformsByDevice'];
-      if (deviceTransforms is Map && deviceTransforms.containsKey(currentDeviceId)) {
+      if (deviceTransforms is Map &&
+          deviceTransforms.containsKey(currentDeviceId)) {
         final deviceSpecific = deviceTransforms[currentDeviceId];
         if (deviceSpecific is Map<String, dynamic>) {
-          print('[EditorNotifier] Resolved device-specific transform for: $currentDeviceId');
+          print(
+              '[EditorNotifier] Resolved device-specific transform for: $currentDeviceId');
           return ElementTransform.fromJson(deviceSpecific);
         }
         if (deviceSpecific is Map) {
-          print('[EditorNotifier] Resolved device-specific transform for: $currentDeviceId');
-          return ElementTransform.fromJson(Map<String, dynamic>.from(deviceSpecific));
+          print(
+              '[EditorNotifier] Resolved device-specific transform for: $currentDeviceId');
+          return ElementTransform.fromJson(
+              Map<String, dynamic>.from(deviceSpecific));
         }
       }
     }
@@ -784,11 +801,13 @@ class EditorNotifier extends StateNotifier<EditorState> {
     // Fall back to default deviceTransform
     final raw = settings['deviceTransform'];
     if (raw is Map<String, dynamic>) {
-      print('[EditorNotifier] Using default deviceTransform (no device-specific found)');
+      print(
+          '[EditorNotifier] Using default deviceTransform (no device-specific found)');
       return ElementTransform.fromJson(raw);
     }
     if (raw is Map) {
-      print('[EditorNotifier] Using default deviceTransform (no device-specific found)');
+      print(
+          '[EditorNotifier] Using default deviceTransform (no device-specific found)');
       return ElementTransform.fromJson(Map<String, dynamic>.from(raw));
     }
 
@@ -800,8 +819,10 @@ class EditorNotifier extends StateNotifier<EditorState> {
   // Text transform overrides (title/subtitle)
   void updateTextTransformOverrideForCurrentScreen(
       TextFieldType type, ElementTransform transform) {
-    print('[EditorNotifier] updateTextTransformOverrideForCurrentScreen called - type: $type');
-    print('[EditorNotifier] Transform: scale=${transform.scale}, rotation=${transform.rotationDeg}');
+    print(
+        '[EditorNotifier] updateTextTransformOverrideForCurrentScreen called - type: $type');
+    print(
+        '[EditorNotifier] Transform: scale=${transform.scale}, rotation=${transform.rotationDeg}');
 
     if (state.selectedScreenIndex == null ||
         state.selectedScreenIndex! >= state.screens.length) {
@@ -813,9 +834,8 @@ class EditorNotifier extends StateNotifier<EditorState> {
     final screen = state.screens[idx];
 
     // Each text element has its own transform (no grouping)
-    final targetKey = type == TextFieldType.title
-        ? 'titleTransform'
-        : 'subtitleTransform';
+    final targetKey =
+        type == TextFieldType.title ? 'titleTransform' : 'subtitleTransform';
 
     final updatedSettings = Map<String, dynamic>.from(screen.customSettings);
     updatedSettings[targetKey] = transform.toJson();
@@ -843,7 +863,8 @@ class EditorNotifier extends StateNotifier<EditorState> {
     final key = isTitle ? 'titleTransform' : 'subtitleTransform';
     final raw = settings[key];
     if (raw is Map<String, dynamic>) return ElementTransform.fromJson(raw);
-    if (raw is Map) return ElementTransform.fromJson(Map<String, dynamic>.from(raw));
+    if (raw is Map)
+      return ElementTransform.fromJson(Map<String, dynamic>.from(raw));
     return base;
   }
 
@@ -907,7 +928,8 @@ class EditorNotifier extends StateNotifier<EditorState> {
     }
   }
 
-  void updateTextContentForLanguage(TextFieldType type, String language, String content) {
+  void updateTextContentForLanguage(
+      TextFieldType type, String language, String content) {
     if (state.selectedScreenIndex == null ||
         state.selectedScreenIndex! >= state.screens.length) {
       return;
@@ -1051,8 +1073,10 @@ class EditorNotifier extends StateNotifier<EditorState> {
       if (existingElement != null) {
         // Preserve existing translations and only update the current editing language content
         final existingTranslations = existingElement.translations;
-        final sourceContent = sourceElement.getTranslation(currentEditingLanguage);
-        final updatedTranslations = Map<String, String>.from(existingTranslations);
+        final sourceContent =
+            sourceElement.getTranslation(currentEditingLanguage);
+        final updatedTranslations =
+            Map<String, String>.from(existingTranslations);
         updatedTranslations[currentEditingLanguage] = sourceContent;
 
         // Update existing element with new formatting and language-specific content
@@ -1070,9 +1094,12 @@ class EditorNotifier extends StateNotifier<EditorState> {
         return screen.copyWith(textConfig: updatedTextConfig);
       } else {
         // Create new element with source formatting and content in current language
-        final sourceContent = sourceElement.getTranslation(currentEditingLanguage);
-        final newElementId = '${screen.id}_${selectedType.id}_${DateTime.now().millisecondsSinceEpoch}';
-        print('[EditorProvider] Creating new ${selectedType.id} element with ID: $newElementId for screen: ${screen.id}');
+        final sourceContent =
+            sourceElement.getTranslation(currentEditingLanguage);
+        final newElementId =
+            '${screen.id}_${selectedType.id}_${DateTime.now().millisecondsSinceEpoch}';
+        print(
+            '[EditorProvider] Creating new ${selectedType.id} element with ID: $newElementId for screen: ${screen.id}');
         final newElement = TextElement(
           id: newElementId,
           type: selectedType,
@@ -1239,14 +1266,16 @@ class EditorNotifier extends StateNotifier<EditorState> {
   }
 
   /// Get screenshot ID for a screen based on current language and device
-  String? getScreenshotForScreen(int screenIndex, {String? languageCode, String? deviceId}) {
+  String? getScreenshotForScreen(int screenIndex,
+      {String? languageCode, String? deviceId}) {
     if (screenIndex < 0 || screenIndex >= state.screens.length) return null;
 
     final screen = state.screens[screenIndex];
     final targetLanguage = languageCode ?? state.selectedLanguage;
     final targetDevice = deviceId ?? state.selectedDevice;
 
-    return screen.getScreenshotForLanguageAndDevice(targetLanguage, targetDevice);
+    return screen.getScreenshotForLanguageAndDevice(
+        targetLanguage, targetDevice);
   }
 
   ScreenshotItem? getScreenshotItemForScreen(int screenIndex) {
@@ -1324,7 +1353,7 @@ class EditorNotifier extends StateNotifier<EditorState> {
       availableDevices = DevicesData.getPhones();
     }
     final availableLanguages = project.supportedLanguages;
-    
+
     // Compute selected device value first
     final nextSelectedDevice = availableDevices.isNotEmpty
         ? (availableDevices.any((d) => d.id == state.selectedDevice)
@@ -1374,7 +1403,8 @@ class EditorNotifier extends StateNotifier<EditorState> {
             // Only sync screens if they've actually changed
             // Compare screen IDs to detect real changes vs. local pending updates
             final currentScreenIds = state.screens.map((s) => s.id).toList();
-            final projectScreenIds = screensFromProject.map((s) => s.id).toList();
+            final projectScreenIds =
+                screensFromProject.map((s) => s.id).toList();
 
             // Convert to sets for comparison
             final currentSet = currentScreenIds.toSet();
@@ -1383,12 +1413,13 @@ class EditorNotifier extends StateNotifier<EditorState> {
             // Check if the screens are actually different (not just reordered)
             // Only sync if project has screens we don't have OR if we have screens project doesn't have
             final screensChanged = !currentSet.containsAll(projectSet) ||
-                                   !projectSet.containsAll(currentSet) ||
-                                   currentScreenIds.length != projectScreenIds.length;
+                !projectSet.containsAll(currentSet) ||
+                currentScreenIds.length != projectScreenIds.length;
 
             if (screensChanged) {
               int? nextSelected = state.selectedScreenIndex;
-              if (nextSelected == null || nextSelected >= screensFromProject.length) {
+              if (nextSelected == null ||
+                  nextSelected >= screensFromProject.length) {
                 nextSelected = 0;
               }
 
@@ -1407,7 +1438,9 @@ class EditorNotifier extends StateNotifier<EditorState> {
       }
 
       // One-time bootstrap of screen persistence if project has none
-      if (!_bootstrapped && latestProject.screenConfigs.isEmpty && state.screens.isNotEmpty) {
+      if (!_bootstrapped &&
+          latestProject.screenConfigs.isEmpty &&
+          state.screens.isNotEmpty) {
         for (final screen in state.screens) {
           _persistNewScreen(screen);
         }
@@ -1505,6 +1538,51 @@ class EditorNotifier extends StateNotifier<EditorState> {
     }
   }
 
+  /// Apply only the device positioning from the current screen to all screens
+  void applyDevicePositioningToAllScreens() {
+    if (state.selectedScreenIndex == null ||
+        state.selectedScreenIndex! >= state.screens.length) {
+      return;
+    }
+
+    final currentScreen = state.screens[state.selectedScreenIndex!];
+    final currentCustomSettings = currentScreen.customSettings;
+
+    // Check if there are any device transforms to apply
+    if (!currentCustomSettings.containsKey('deviceTransform') &&
+        !currentCustomSettings.containsKey('deviceTransformsByDevice')) {
+      return;
+    }
+
+    final updatedScreens = state.screens.map((screen) {
+      // Skip the current screen as it's the source
+      if (screen.id == currentScreen.id) return screen;
+
+      final updatedSettings = Map<String, dynamic>.from(screen.customSettings);
+
+      // Copy device transform
+      if (currentCustomSettings.containsKey('deviceTransform')) {
+        updatedSettings['deviceTransform'] =
+            currentCustomSettings['deviceTransform'];
+      }
+
+      // Copy device transforms by device
+      if (currentCustomSettings.containsKey('deviceTransformsByDevice')) {
+        updatedSettings['deviceTransformsByDevice'] =
+            currentCustomSettings['deviceTransformsByDevice'];
+      }
+
+      return screen.copyWith(customSettings: updatedSettings);
+    }).toList();
+
+    state = state.copyWith(screens: updatedScreens);
+
+    // Persist changes for all screens
+    for (int i = 0; i < updatedScreens.length; i++) {
+      _persistScreen(i);
+    }
+  }
+
   /// Get the layout ID for the current screen
   String getCurrentScreenLayoutId() {
     if (state.selectedScreenIndex == null)
@@ -1515,21 +1593,23 @@ class EditorNotifier extends StateNotifier<EditorState> {
   /// Fixes element ID collisions across screens by regenerating IDs
   void fixElementIdCollisions() {
     print('[EditorProvider] Fixing element ID collisions...');
-    
+
     final updatedScreens = <ScreenConfig>[];
     final seenIds = <String>{};
-    
+
     for (final screen in state.screens) {
       var updatedTextConfig = screen.textConfig;
       bool hasChanges = false;
-      
+
       for (final element in screen.textConfig.allElements) {
         // Check if this element ID already exists in another screen
         if (seenIds.contains(element.id)) {
           // Generate new unique ID for this element
-          final newId = '${screen.id}_${element.type.id}_${DateTime.now().millisecondsSinceEpoch}_${updatedScreens.length}';
-          print('[EditorProvider] Fixing collision: ${element.id} -> $newId (screen: ${screen.id})');
-          
+          final newId =
+              '${screen.id}_${element.type.id}_${DateTime.now().millisecondsSinceEpoch}_${updatedScreens.length}';
+          print(
+              '[EditorProvider] Fixing collision: ${element.id} -> $newId (screen: ${screen.id})');
+
           final updatedElement = element.copyWith(id: newId);
           updatedTextConfig = updatedTextConfig.updateElement(updatedElement);
           hasChanges = true;
@@ -1538,18 +1618,20 @@ class EditorNotifier extends StateNotifier<EditorState> {
           seenIds.add(element.id);
         }
       }
-      
+
       if (hasChanges) {
         updatedScreens.add(screen.copyWith(textConfig: updatedTextConfig));
       } else {
         updatedScreens.add(screen);
       }
     }
-    
-    if (updatedScreens.any((screen) => screen != state.screens[updatedScreens.indexOf(screen)])) {
+
+    if (updatedScreens.any(
+        (screen) => screen != state.screens[updatedScreens.indexOf(screen)])) {
       state = state.copyWith(screens: updatedScreens);
-      print('[EditorProvider] Element ID collisions fixed, ${seenIds.length} unique IDs now exist');
-      
+      print(
+          '[EditorProvider] Element ID collisions fixed, ${seenIds.length} unique IDs now exist');
+
       // Persist all screens after fixing IDs
       for (int i = 0; i < updatedScreens.length; i++) {
         _persistScreen(i);
@@ -1567,7 +1649,9 @@ final editorProvider =
 
 // Project-specific editor provider with real-time synchronization
 // Stable-by-id family to avoid provider recreation on every ProjectModel instance refresh
-final editorByProjectIdProvider = StateNotifierProvider.family<EditorNotifier, EditorState, String>((ref, projectId) {
+final editorByProjectIdProvider =
+    StateNotifierProvider.family<EditorNotifier, EditorState, String>(
+        (ref, projectId) {
   final notifier = EditorNotifier(null, ref);
 
   // Listen to project stream and push updates into the existing notifier

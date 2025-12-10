@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../projects/models/project_model.dart';
 import '../../constants/layouts_data.dart';
 import '../../models/editor_state.dart';
-import '../../models/layout_models.dart';
 import '../../providers/editor_provider.dart';
 import 'layout_controls.dart';
 import 'layout_preview_card.dart';
@@ -163,18 +162,13 @@ class LayoutTabContent extends ConsumerWidget {
 
   Widget _buildApplyToAllButton(
       EditorState editorState, EditorNotifier editorNotifier) {
-    final currentScreenLayoutId = editorNotifier.getCurrentScreenLayoutId();
-    final currentLayout = currentScreenLayoutId != null
-        ? LayoutsData.getLayoutById(currentScreenLayoutId)
-        : null;
-
     return Builder(
       builder: (context) => SizedBox(
         width: double.infinity,
         child: OutlinedButton(
-          onPressed: currentLayout != null && editorState.screens.isNotEmpty
+          onPressed: editorState.screens.isNotEmpty
               ? () => _showApplyToAllConfirmation(
-                  context, editorNotifier, editorState, currentLayout)
+                  context, editorNotifier, editorState)
               : null,
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFFE91E63),
@@ -185,9 +179,7 @@ class LayoutTabContent extends ConsumerWidget {
             ),
           ),
           child: Text(
-            currentLayout != null
-                ? 'Apply "${currentLayout.config.name}" to all ${editorState.screens.length} screens'
-                : 'Select a layout first',
+            'Apply device positioning to all ${editorState.screens.length} screens',
             style: const TextStyle(
               fontWeight: FontWeight.w500,
               fontSize: 16,
@@ -203,14 +195,13 @@ class LayoutTabContent extends ConsumerWidget {
     BuildContext context,
     EditorNotifier editorNotifier,
     EditorState editorState,
-    LayoutModel currentLayout,
   ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Apply Layout to All Screens'),
+        title: const Text('Apply Device Positioning to All'),
         content: Text(
-          'This will apply the "${currentLayout.config.name}" layout to all ${editorState.screens.length} screens.\n\n⚠️ This will override existing text positioning and grouping on all screens.',
+          'This will apply the current device scale, rotation, and offsets to all ${editorState.screens.length} screens.\n\nExisting text positioning will NOT be changed.',
         ),
         actions: [
           TextButton(
@@ -220,12 +211,12 @@ class LayoutTabContent extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              editorNotifier.applyLayoutToAllScreens(currentLayout.config.id);
+              editorNotifier.applyDevicePositioningToAllScreens();
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                      'Applied "${currentLayout.config.name}" to all ${editorState.screens.length} screens'),
+                      'Applied device positioning to all ${editorState.screens.length} screens'),
                   backgroundColor: const Color(0xFFE91E63),
                   behavior: SnackBarBehavior.floating,
                   margin: const EdgeInsets.all(16),

@@ -77,9 +77,9 @@ class DashboardScreen extends ConsumerWidget {
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 1.6,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 2.2,
                     ),
                     itemCount: projects.length,
                     itemBuilder: (context, index) {
@@ -95,8 +95,8 @@ class DashboardScreen extends ConsumerWidget {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content: Text(
-                                        'Error toggling lock: $error')),
+                                    content:
+                                        Text('Error toggling lock: $error')),
                               );
                             }
                           }
@@ -104,25 +104,54 @@ class DashboardScreen extends ConsumerWidget {
                         onDelete: () async {
                           final confirmed = await showDialog<bool>(
                             context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Delete Project'),
-                              content: Text(
-                                'Are you sure you want to delete "${project.appName}"?\n\nThis action cannot be undone.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(context).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                FilledButton(
-                                  onPressed: () => Navigator.of(context).pop(true),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                  ),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
-                            ),
+                            builder: (context) {
+                              final controller = TextEditingController();
+                              return StatefulBuilder(
+                                builder: (context, setState) {
+                                  return AlertDialog(
+                                    title: const Text('Delete Project'),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Are you sure you want to delete "${project.appName}"?\n\nThis action cannot be undone.\n\nPlease type "DELETE" to confirm.',
+                                        ),
+                                        const SizedBox(height: 16),
+                                        TextField(
+                                          controller: controller,
+                                          decoration: const InputDecoration(
+                                            border: OutlineInputBorder(),
+                                            hintText: 'DELETE',
+                                          ),
+                                          onChanged: (value) {
+                                            setState(() {});
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      FilledButton(
+                                        onPressed: controller.text == 'DELETE'
+                                            ? () =>
+                                                Navigator.of(context).pop(true)
+                                            : null,
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                        ),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
                           );
 
                           if (confirmed == true) {
@@ -134,8 +163,8 @@ class DashboardScreen extends ConsumerWidget {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content:
-                                          Text('Error deleting project: $error')),
+                                      content: Text(
+                                          'Error deleting project: $error')),
                                 );
                               }
                             }
